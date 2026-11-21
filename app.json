@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Chikitsa",
+    "slug": "chikitsa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1E4D2B"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "softwareKeyboardLayoutMode": "pan",
+      "adaptiveIcon": {
+        "backgroundColor": "#1E4D2B"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
