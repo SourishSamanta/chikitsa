@@ -15,6 +15,7 @@ import { COLORS, RADIUS, SPACING } from '../theme/colors';
 import ChatBubble from '../components/ChatBubble';
 import QuickPromptChips from '../components/QuickPromptChips';
 import { findBotResponse } from '../data/botKnowledge';
+import { askDadiMaa } from '../services/ragService';
 
 export default function ChatScreen({ savedRemedies, onToggleSave }) {
   const [messages, setMessages] = useState([
@@ -32,21 +33,23 @@ export default function ChatScreen({ savedRemedies, onToggleSave }) {
 
   const flatListRef = useRef(null);
 
-  const handleSendMessage = (textToSend) => {
+  const handleSendMessage = async (textToSend) => {
     const query = textToSend || inputQuery;
 
-    if (!query.trim()) return;
+    if (!query.trim() || isTyping) return;
 
+    const trimmedQuery = query.trim();
     const userMsg = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: query.trim(),
+      text: trimmedQuery,
       time: new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       }),
     };
 
+    const currentHistory = messages;
     setMessages((prev) => [...prev, userMsg]);
     setInputQuery('');
     setIsTyping(true);
@@ -57,29 +60,37 @@ export default function ChatScreen({ savedRemedies, onToggleSave }) {
       });
     }, 100);
 
-    setTimeout(() => {
-      const response = findBotResponse(query);
-
-      const botMsg = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        text: response.text,
-        remedy: response.remedy,
-        time: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+    let response;
+    try {
+      response = await askDadiMaa(trimmedQuery, currentHistory);
+    } catch (err) {
+      console.warn('[ChatScreen] RAG server unavailable, using offline fallback:', err?.message);
+      const localResponse = findBotResponse(trimmedQuery);
+      response = {
+        ...localResponse,
+        text: `${localResponse.text}\n\n(Offline mode — start the Chikitsa RAG server for AI-powered answers.)`,
       };
+    }
 
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
+    const botMsg = {
+      id: `bot-${Date.now()}`,
+      sender: 'bot',
+      text: response.text,
+      remedy: response.remedy,
+      time: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
 
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({
-          animated: true,
-        });
-      }, 100);
-    }, 900);
+    setMessages((prev) => [...prev, botMsg]);
+    setIsTyping(false);
+
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({
+        animated: true,
+      });
+    }, 100);
   };
 
   return (
@@ -157,10 +168,10 @@ export default function ChatScreen({ savedRemedies, onToggleSave }) {
         <TouchableOpacity
           style={[
             styles.sendBtn,
-            !inputQuery.trim() && styles.sendBtnDisabled,
+            (!inputQuery.trim() || isTyping) && styles.sendBtnDisabled,
           ]}
           onPress={() => handleSendMessage()}
-          disabled={!inputQuery.trim()}
+          disabled={!inputQuery.trim() || isTyping}
           activeOpacity={0.7}
         >
           <Ionicons
