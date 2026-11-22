@@ -15,7 +15,7 @@ import { COLORS, RADIUS, SPACING } from '../theme/colors';
 import ChatBubble from '../components/ChatBubble';
 import QuickPromptChips from '../components/QuickPromptChips';
 import { findBotResponse } from '../data/botKnowledge';
-import { askDadiMaa } from '../services/ragService';
+import { askDadiMaa, API_BASE_URL } from '../services/ragService';
 
 export default function ChatScreen({ savedRemedies, onToggleSave }) {
   const [messages, setMessages] = useState([
@@ -61,10 +61,15 @@ export default function ChatScreen({ savedRemedies, onToggleSave }) {
     }, 100);
 
     let response;
+    const reqStartedAt = Date.now();
     try {
       response = await askDadiMaa(trimmedQuery, currentHistory);
     } catch (err) {
-      console.warn('[ChatScreen] RAG server unavailable, using offline fallback:', err?.message);
+      const elapsedMs = Date.now() - reqStartedAt;
+      console.warn(
+        `[ChatScreen] RAG server unavailable at ${API_BASE_URL} after ${elapsedMs}ms, using offline fallback:`,
+        err?.message
+      );
       const localResponse = findBotResponse(trimmedQuery);
       response = {
         ...localResponse,

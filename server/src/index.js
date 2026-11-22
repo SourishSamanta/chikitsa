@@ -1,3 +1,4 @@
+import os from 'node:os';
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
@@ -8,6 +9,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+app.use((req, _res, next) => {
+  console.log(`[req] ${req.method} ${req.url}`);
+  next();
+});
 
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -42,8 +48,17 @@ async function start() {
     console.warn(`[warn] ${err.message}`);
   }
 
-  app.listen(config.port, () => {
-    console.log(`Chikitsa RAG server listening on http://localhost:${config.port}`);
+  app.listen(config.port, '0.0.0.0', () => {
+    console.log(`Chikitsa RAG server listening on:`);
+    console.log(`  Local:   http://localhost:${config.port}`);
+    const nets = os.networkInterfaces();
+    for (const addrs of Object.values(nets)) {
+      for (const addr of addrs || []) {
+        if (addr.family === 'IPv4' && !addr.internal) {
+          console.log(`  Network: http://${addr.address}:${config.port}`);
+        }
+      }
+    }
   });
 }
 

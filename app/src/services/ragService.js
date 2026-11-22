@@ -1,21 +1,58 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import { REMEDIES } from '../data/remedies';
 
-const REQUEST_TIMEOUT_MS = 35000;
+const REQUEST_TIMEOUT_MS = 60000;
+const SERVER_PORT = 3001;
+
+function extractHostFromUrl(url) {
+  if (typeof url !== 'string') return null;
+  const match = url.match(/^(?:https?|exp):\/\/([^/:]+)/i);
+  return match && match[1] ? match[1] : null;
+}
+
+function extractDevServerHost() {
+  try {
+    const sourceCode = NativeModules?.SourceCode;
+    const candidates = [
+      sourceCode?.getConstants?.()?.scriptURL,
+      sourceCode?.scriptURL,
+      NativeModules?.ExponentConstants?.linkingUri,
+      NativeModules?.ExponentConstants?.experienceUrl,
+    ];
+
+    for (const url of candidates) {
+      const host = extractHostFromUrl(url);
+      if (host && host !== 'localhost' && host !== '127.0.0.1') {
+        return host;
+      }
+    }
+  } catch {
+    // ignore if unavailable
+  }
+  return null;
+}
 
 function getDefaultBaseUrl() {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl && envUrl.trim()) {
     return envUrl.trim().replace(/\/+$/, '');
   }
+
+  // On Expo Go (physical phone) or dev builds, reuse the same LAN host that serves Metro
+  const devHost = extractDevServerHost();
+  if (devHost) {
+    return `http://${devHost}:${SERVER_PORT}`;
+  }
+
   // Android emulator maps host machine's localhost to 10.0.2.2
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3001';
+    return `http://10.0.2.2:${SERVER_PORT}`;
   }
-  return 'http://localhost:3001';
+  return `http://localhost:${SERVER_PORT}`;
 }
 
 export const API_BASE_URL = getDefaultBaseUrl();
+console.log('[ragService] API_BASE_URL =', API_BASE_URL);
 
 /**
  * Send a user query + recent chat history to the Chikitsa RAG backend.

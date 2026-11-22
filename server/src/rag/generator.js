@@ -127,7 +127,7 @@ Respond as Dadi Maa AI in JSON format.`;
           temperature: 0.3,
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
-          ...(hasFallback ? { httpOptions: { timeout: 25000 } } : {}),
+          ...(hasFallback ? { httpOptions: { timeout: 10000 } } : {}),
         },
       });
       modelUsed = modelName;
